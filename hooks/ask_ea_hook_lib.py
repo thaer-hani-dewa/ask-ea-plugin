@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from datetime import datetime
@@ -11,7 +12,25 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
+def _find_repo_root() -> Path:
+    """Resolve project root for both install.sh and native plugin modes.
+
+    install.sh mode: script lives at <project>/.claude/hooks/<script>.py
+    Native plugin mode: script lives at <plugin_root>/hooks/<script>.py
+      — falls back to CLAUDE_PROJECT_DIR env var or cwd.
+    """
+    script = Path(__file__).resolve()
+    if script.parent.name == "hooks" and script.parent.parent.name == ".claude":
+        return script.parent.parent.parent
+    for env_var in ("CLAUDE_PROJECT_DIR", "CLAUDE_WORKSPACE_ROOT", "CLAUDE_WORKING_DIR"):
+        val = os.environ.get(env_var)
+        if val:
+            return Path(val)
+    return Path.cwd()
+
+
+REPO_ROOT = _find_repo_root()
 EA_SKILLS_DIR = REPO_ROOT / "ea_skills"
 TELEMETRY_DIR = REPO_ROOT / ".claude" / "telemetry"
 HOOK_EVENTS_FILE = TELEMETRY_DIR / "hooks-events.jsonl"
